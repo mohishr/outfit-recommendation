@@ -46,6 +46,6 @@ def extract_image_feature(image_path: Path, model: ImageEncoder, device=device):
 if __name__ == "__main__":
     # Example usage
     model = ImageEncoder().to(device)
-    image_path = Path("C:\\Users\\shrey\\OneDrive\\Desktop\\Outfit-recommendation\\dataset\\images\\373947\\1.jpg")  # Replace with your image path
+    image_path = Path("dataset\\images\\373947\\1.jpg")  # Replace with your image path
     feature = extract_image_feature(image_path, model)
     print("Extracted image feature shape:", feature)
