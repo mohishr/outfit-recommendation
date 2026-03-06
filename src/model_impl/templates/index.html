@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fashion AI Studio</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    color: #f8fafc;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 40px auto;
+    background: #1e293b;
+    padding: 40px;
+    border-radius: 16px;
+    box-shadow: 0 15px 50px rgba(0,0,0,0.4);
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.tabs {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 30px;
+}
+
+.tabs button {
+    background: #334155;
+    border: none;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.tabs button.active,
+.tabs button:hover {
+    background: #6366f1;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+button.action {
+    margin-top: 20px;
+    padding: 12px 22px;
+    background: #6366f1;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button.action:hover {
+    background: #4f46e5;
+}
+
+.loading {
+    margin-top: 10px;
+    color: #facc15;
+}
+
+.result {
+    margin-top: 20px;
+    padding: 15px;
+    background: #334155;
+    border-radius: 8px;
+}
+
+/* Upload zone */
+.drop-zone {
+    border: 2px dashed #6366f1;
+    padding: 25px;
+    text-align: center;
+    border-radius: 12px;
+    background: #0f172a;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.drop-zone:hover {
+    background: #1e293b;
+}
+
+/* GRID SYSTEM */
+.image-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+/* FIXED IMAGE SIZE FOR CLEAN SYMMETRY */
+.image-card {
+    width: 150px;
+    text-align: center;
+}
+
+.image-card img {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 2px solid #334155;
+}
+
+.image-card p {
+    margin-top: 6px;
+    font-size: 14px;
+}
+
+.remove-btn {
+    margin-top: 5px;
+    background: #ef4444;
+    border: none;
+    color: white;
+    border-radius: 6px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+select {
+    padding: 10px;
+    background: #334155;
+    border: none;
+    border-radius: 6px;
+    color: white;
+    margin-top: 10px;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h1>👗 Fashion AI Studio</h1>
+
+<div class="tabs">
+    <button class="active" onclick="showTab(event,'compat')">Compatibility</button>
+    <button onclick="showTab(event,'recommend')">Recommend Item</button>
+    <button onclick="showTab(event,'stylist')">Virtual Stylist</button>
+</div>
+
+<!-- ================== COMPATIBILITY ================== -->
+<div id="compat" class="tab-content active">
+
+<h2>Check Outfit Compatibility</h2>
+
+<div class="drop-zone" onclick="document.getElementById('compatImages').click()">
+    Click or Drag Images Here
+    <input type="file" id="compatImages" multiple accept="image/*" hidden>
+</div>
+
+<div id="compatPreview" class="image-grid"></div>
+
+<button class="action" onclick="predictCompatibility()">Analyze</button>
+<div class="loading" id="compatLoading"></div>
+<div class="result" id="compatResult"></div>
+
+</div>
+
+<!-- ================== RECOMMEND ================== -->
+<div id="recommend" class="tab-content">
+
+<h2>Complete The Look</h2>
+
+<label>Select Target Category:</label><br>
+<select id="targetCategory">
+    <option value="Tops">Tops</option>
+    <option value="Bottoms">Bottoms</option>
+    <option value="Shoes">Shoes</option>
+    <option value="Accessories">Accessories</option>
+    <option value="Outerwear">Outerwear</option>
+    <option value="Dresses">Dresses</option>
+</select>
+
+<br><br>
+
+<div class="drop-zone" onclick="document.getElementById('recommendImages').click()">
+    Upload Existing Outfit Items
+    <input type="file" id="recommendImages" multiple accept="image/*" hidden>
+</div>
+
+<div id="recommendPreview" class="image-grid"></div>
+
+<button class="action" onclick="recommendItem()">Get Recommendations</button>
+<div class="loading" id="recommendLoading"></div>
+
+<h3>Top Matches</h3>
+<div id="recommendResultsGrid" class="image-grid"></div>
+
+</div>
+
+<!-- ================== STYLIST ================== -->
+<div id="stylist" class="tab-content">
+
+<h2>Virtual Stylist</h2>
+
+<button class="action" onclick="generateOutfits()">Generate Outfit Ideas</button>
+<div class="result" id="stylistResult"></div>
+
+</div>
+
+</div>
+
+<script>
+function showTab(evt, id) {
+    document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
+    document.querySelectorAll(".tabs button").forEach(el => el.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+    evt.currentTarget.classList.add("active");
+}
+
+/* COMPATIBILITY */
+let compatFiles = [];
+const compatInput = document.getElementById("compatImages");
+const compatPreview = document.getElementById("compatPreview");
+
+compatInput.addEventListener("change", function() {
+    for (let file of this.files) compatFiles.push(file);
+    renderCompatPreview();
+});
+
+function renderCompatPreview() {
+    compatPreview.innerHTML = "";
+    compatFiles.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            compatPreview.innerHTML += `
+                <div class="image-card">
+                    <img src="${e.target.result}">
+                    <button class="remove-btn" onclick="removeCompat(${index})">Remove</button>
+                </div>
+            `;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function removeCompat(index) {
+    compatFiles.splice(index, 1);
+    renderCompatPreview();
+}
+
+async function predictCompatibility() {
+    if (compatFiles.length < 2) {
+        alert("Upload at least 2 images.");
+        return;
+    }
+
+    const formData = new FormData();
+    compatFiles.forEach(f => formData.append("images", f));
+
+    document.getElementById("compatLoading").innerText = "Analyzing...";
+
+    const res = await fetch("/api/predict", { method: "POST", body: formData });
+    const data = await res.json();
+
+    document.getElementById("compatLoading").innerText = "";
+
+    if (data.compatibility_score !== undefined) {
+        document.getElementById("compatResult").innerText =
+            "Compatibility Score: " +
+            (data.compatibility_score * 100).toFixed(2) + "%";
+    }
+}
+
+/* RECOMMEND */
+let recommendFiles = [];
+const recommendInput = document.getElementById("recommendImages");
+const recommendPreview = document.getElementById("recommendPreview");
+
+recommendInput.addEventListener("change", function() {
+    for (let file of this.files) recommendFiles.push(file);
+    renderRecommendPreview();
+});
+
+function renderRecommendPreview() {
+    recommendPreview.innerHTML = "";
+    recommendFiles.forEach(file => {
+        const imgURL = URL.createObjectURL(file);
+        recommendPreview.innerHTML += `
+            <div class="image-card">
+                <img src="${imgURL}">
+            </div>
+        `;
+    });
+}
+
+async function recommendItem() {
+    if (recommendFiles.length < 1) {
+        alert("Upload at least one outfit item.");
+        return;
+    }
+
+    const category = document.getElementById("targetCategory").value;
+    const formData = new FormData();
+    formData.append("target_category", category);
+    recommendFiles.forEach(f => formData.append("images", f));
+
+    document.getElementById("recommendLoading").innerText = "Searching...";
+
+    const res = await fetch("/api/recommend_item", {
+        method: "POST",
+        body: formData
+    });
+
+    const data = await res.json();
+    document.getElementById("recommendLoading").innerText = "";
+
+    const grid = document.getElementById("recommendResultsGrid");
+    grid.innerHTML = "";
+
+    if (data.recommendations) {
+        data.recommendations.forEach(item => {
+            if (item.image_base64) {
+                grid.innerHTML += `
+                    <div class="image-card">
+                        <img src="data:image/jpeg;base64,${item.image_base64}">
+                        <p>${(item.score * 100).toFixed(1)}%</p>
+                    </div>
+                `;
+            }
+        });
+    }
+}
+
+/* STYLIST */
+async function generateOutfits() {
+    const res = await fetch("/api/generate_outfits", { method: "POST" });
+    const data = await res.json();
+    document.getElementById("stylistResult").innerText = data.message;
+}
+</script>
+
+</body>
+</html>
